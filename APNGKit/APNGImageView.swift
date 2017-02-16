@@ -26,6 +26,31 @@
 
 import UIKit
 
+extension UIImage {
+    func maskWithColor(color: UIColor) -> UIImage? {
+        let maskImage = cgImage!
+        
+        let width = size.width
+        let height = size.height
+        let bounds = CGRect(x: 0, y: 0, width: width, height: height)
+        
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+        let context = CGContext(data: nil, width: Int(width), height: Int(height), bitsPerComponent: 8, bytesPerRow: 0, space: colorSpace, bitmapInfo: bitmapInfo.rawValue)!
+        
+        context.clip(to: bounds, mask: maskImage)
+        context.setFillColor(color.cgColor)
+        context.fill(bounds)
+        
+        if let cgImage = context.makeImage() {
+            return UIImage(cgImage: cgImage)
+        } else {
+            return nil
+        }
+    }
+}
+
+
 @objc public protocol APNGImageViewDelegate {
     @objc optional func apngImageView(_ imageView: APNGImageView, didFinishPlaybackForRepeatedCount count: Int)
 }
@@ -35,6 +60,8 @@ import UIKit
 /// All images associated with an APNGImageView object should use the same scale. 
 /// If your application uses images with different scales, they may render incorrectly.
 open class APNGImageView: UIView {
+    
+    open var maskColor:UIColor?
     
     /// The image displayed in the image view.
     /// If you change the image when the animation playing, 
@@ -240,7 +267,14 @@ open class APNGImageView: UIView {
             
             let frame = image.next(currentIndex: currentFrameIndex)
             currentFrameDuration = frame.duration
-            updateContents(frame.image)
+            if(maskColor == nil)
+            {
+                updateContents(frame.image)
+            }
+            else
+            {
+                updateContents(frame.image?.maskWithColor(color: maskColor!))
+            }
         }
         
     }
