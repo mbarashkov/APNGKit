@@ -57,14 +57,14 @@ extension UIImage {
 
 /// An APNG image view object provides a view-based container for displaying an APNG image.
 /// You can control the starting and stopping of the animation, as well as the repeat count.
-/// All images associated with an APNGImageView object should use the same scale. 
+/// All images associated with an APNGImageView object should use the same scale.
 /// If your application uses images with different scales, they may render incorrectly.
 open class APNGImageView: UIView {
     
     open var maskColor:UIColor?
     
     /// The image displayed in the image view.
-    /// If you change the image when the animation playing, 
+    /// If you change the image when the animation playing,
     /// the animation of original image will stop, and the new one will start automatically.
     open var image: APNGImage? { // Setter should be run on main thread
         didSet {
@@ -77,7 +77,7 @@ open class APNGImageView: UIView {
             }
             
             image.reset()
-
+            
             let frame = image.next(currentIndex: currentFrameIndex)
             currentFrameDuration = frame.duration
             updateContents(frame.image)
@@ -95,7 +95,7 @@ open class APNGImageView: UIView {
     /// A Bool value indicating whether the animation is running.
     open fileprivate(set) var isAnimating: Bool
     
-    /// A Bool value indicating whether the animation should be 
+    /// A Bool value indicating whether the animation should be
     /// started automatically after an image is set. Default is false.
     open var autoStartAnimation: Bool {
         didSet {
@@ -122,17 +122,17 @@ open class APNGImageView: UIView {
     var repeated: Int = 0
     
     /**
-    Initialize an APNG image view with the specified image.
-    
-    - note: This method adjusts the frame of the receiver to match the 
-            size of the specified image. It also disables user interactions 
-            for the image view by default.
-            The first frame of image (default image) will be displayed.
-    
-    - parameter image: The initial APNG image to display in the image view.
-    
-    - returns: An initialized image view object.
-    */
+     Initialize an APNG image view with the specified image.
+     
+     - note: This method adjusts the frame of the receiver to match the
+     size of the specified image. It also disables user interactions
+     for the image view by default.
+     The first frame of image (default image) will be displayed.
+     
+     - parameter image: The initial APNG image to display in the image view.
+     
+     - returns: An initialized image view object.
+     */
     public init(image: APNGImage?) {
         self.image = image
         isAnimating = false
@@ -155,16 +155,16 @@ open class APNGImageView: UIView {
     deinit {
         stopAnimating()
     }
-
+    
     /**
-    Initialize an APNG image view with a decoder.
-    
-    - note: You should never call this init method from your code.
-    
-    - parameter aDecoder: A decoder used to decode the view from nib.
-    
-    - returns: An initialized image view object.
-    */
+     Initialize an APNG image view with a decoder.
+     
+     - note: You should never call this init method from your code.
+     
+     - parameter aDecoder: A decoder used to decode the view from nib.
+     
+     - returns: An initialized image view object.
+     */
     required public init?(coder aDecoder: NSCoder) {
         isAnimating = false
         autoStartAnimation = false
@@ -172,8 +172,8 @@ open class APNGImageView: UIView {
     }
     
     /**
-    Starts animation contained in the image.
-    */
+     Starts animation contained in the image.
+     */
     open func startAnimating() {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
@@ -195,8 +195,31 @@ open class APNGImageView: UIView {
     }
     
     /**
-    Starts animation contained in the image.
-    */
+     Starts animation contained in the image.
+     */
+    open func startAnimatingReverse() {
+        let mainRunLoop = RunLoop.main
+        let currentRunLoop = RunLoop.current
+        
+        if mainRunLoop != currentRunLoop {
+            performSelector(onMainThread: #selector(APNGImageView.startAnimating), with: nil, waitUntilDone: false)
+            return
+        }
+        
+        if isAnimating {
+            return
+        }
+        
+        isAnimating = true
+        timer = CADisplayLink.apng_displayLink({ [weak self] (displayLink) -> () in
+            self?.tick(displayLink, back: true)
+        })
+        timer?.add(to: mainRunLoop, forMode: (self.allowAnimationInScrollView ? RunLoopMode.commonModes : RunLoopMode.defaultRunLoopMode))
+    }
+    
+    /**
+     Starts animation contained in the image.
+     */
     open func stopAnimating() {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
@@ -220,14 +243,18 @@ open class APNGImageView: UIView {
         timer = nil
     }
     
-    func tick(_ sender: CADisplayLink?) {
+    func tick(_ sender: CADisplayLink?, back: Bool = false) {
         guard let localTimer = sender,
-              let image = image else {
-            return
+            let image = image else {
+                return
         }
         
         if lastTimestamp == 0 {
             lastTimestamp = localTimer.timestamp
+            if(back)
+            {
+                currentFrameIndex = image.frameCount - 1
+            }
             return
         }
         
@@ -237,31 +264,61 @@ open class APNGImageView: UIView {
         currentPassedDuration += elapsedTime
         
         if currentPassedDuration >= currentFrameDuration {
-            currentFrameIndex = currentFrameIndex + 1
+            currentFrameIndex = currentFrameIndex + (back ? -1 : 1)
             
-            if currentFrameIndex == image.frameCount {
-                
-                delegate?.apngImageView?(self, didFinishPlaybackForRepeatedCount: repeated)
-                
-                // If user set image to `nil`, do not render anymore.
-                guard let _ = self.image else { return }
-                
-                currentFrameIndex = 0
-                repeated = repeated + 1
-                
-                if image.repeatCount != RepeatForever && repeated >= image.repeatCount {
-                    stopAnimating()
-                    // Stop in the last frame
-                    return
-                }
-                
-                // Only the first frame could be hidden.
-                if image.firstFrameHidden {
-                    // Skip the first frame
-                    _ = image.next(currentIndex: 0)
-                    currentFrameIndex = 1
+            if(back)
+            {
+                if currentFrameIndex < 0 {
+                    
+                    delegate?.apngImageView?(self, didFinishPlaybackForRepeatedCount: repeated)
+                    
+                    // If user set image to `nil`, do not render anymore.
+                    guard let _ = self.image else { return }
+                    
+                    currentFrameIndex = 0
+                    repeated = repeated + 1
+                    
+                    if image.repeatCount != RepeatForever && repeated >= image.repeatCount {
+                        stopAnimating()
+                        // Stop in the last frame
+                        return
+                    }
+                    
+                    // Only the first frame could be hidden.
+                    if image.firstFrameHidden {
+                        // Skip the first frame
+                        _ = image.next(currentIndex: 0)
+                        currentFrameIndex = 1
+                    }
                 }
             }
+            else
+            {
+                if currentFrameIndex == image.frameCount {
+                    
+                    delegate?.apngImageView?(self, didFinishPlaybackForRepeatedCount: repeated)
+                    
+                    // If user set image to `nil`, do not render anymore.
+                    guard let _ = self.image else { return }
+                    
+                    currentFrameIndex = 0
+                    repeated = repeated + 1
+                    
+                    if image.repeatCount != RepeatForever && repeated >= image.repeatCount {
+                        stopAnimating()
+                        // Stop in the last frame
+                        return
+                    }
+                    
+                    // Only the first frame could be hidden.
+                    if image.firstFrameHidden {
+                        // Skip the first frame
+                        _ = image.next(currentIndex: 0)
+                        currentFrameIndex = 1
+                    }
+                }
+            }
+            
             
             currentPassedDuration = currentPassedDuration - currentFrameDuration
             
@@ -286,15 +343,15 @@ open class APNGImageView: UIView {
         } else {
             currentImage = nil
         }
-
+        
         let cgImage = image?.cgImage
-
+        
         if cgImage !== currentImage {
             layer.contents = cgImage
             if let image = image {
                 layer.contentsScale = image.scale
             }
-
+            
         }
         
     }
