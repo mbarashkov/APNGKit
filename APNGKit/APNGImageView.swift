@@ -197,7 +197,7 @@ open class APNGImageView: UIView {
     /**
      Starts animation contained in the image.
      */
-    open func startAnimatingReverse() {
+    open func startAnimatingReverse(completed: @escaping  (Void) -> Void) {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
         
@@ -212,7 +212,10 @@ open class APNGImageView: UIView {
         
         isAnimating = true
         timer = CADisplayLink.apng_displayLink({ [weak self] (displayLink) -> () in
-            self?.tick(displayLink, back: true)
+            if self?.tick(displayLink, back: true) ?? false
+            {
+                completed()
+            }
         })
         timer?.add(to: mainRunLoop, forMode: (self.allowAnimationInScrollView ? RunLoopMode.commonModes : RunLoopMode.defaultRunLoopMode))
     }
@@ -243,10 +246,54 @@ open class APNGImageView: UIView {
         timer = nil
     }
     
-    func tick(_ sender: CADisplayLink?, back: Bool = false) {
+    open func pauseAnimating() {
+        let mainRunLoop = RunLoop.main
+        let currentRunLoop = RunLoop.current
+        
+        if mainRunLoop != currentRunLoop {
+            performSelector(onMainThread: #selector(APNGImageView.stopAnimating), with: nil, waitUntilDone: false)
+            return
+        }
+        
+        if !isAnimating {
+            return
+        }
+        
+        isAnimating = false
+        /*repeated = 0
+         lastTimestamp = 0
+         currentPassedDuration = 0
+         currentFrameIndex = 0
+         */
+        timer?.invalidate()
+        timer = nil
+    }
+    
+    open func resumeAnimating() {
+        let mainRunLoop = RunLoop.main
+        let currentRunLoop = RunLoop.current
+        
+        if mainRunLoop != currentRunLoop {
+            performSelector(onMainThread: #selector(APNGImageView.resumeAnimating), with: nil, waitUntilDone: false)
+            return
+        }
+        
+        if isAnimating {
+            return
+        }
+        
+        isAnimating = true
+        timer = CADisplayLink.apng_displayLink({ [weak self] (displayLink) -> () in
+            self?.tick(displayLink)
+        })
+        timer?.add(to: mainRunLoop, forMode: (self.allowAnimationInScrollView ? RunLoopMode.commonModes : RunLoopMode.defaultRunLoopMode))
+    }
+    
+    func tick(_ sender: CADisplayLink?, back: Bool = false) -> Bool {
+        print("tick")
         guard let localTimer = sender,
             let image = image else {
-                return
+                return false
         }
         
         if lastTimestamp == 0 {
@@ -254,8 +301,9 @@ open class APNGImageView: UIView {
             if(back)
             {
                 currentFrameIndex = image.frameCount - 1
+                return false
             }
-            return
+            return false
         }
         
         let elapsedTime = localTimer.timestamp - lastTimestamp
@@ -273,15 +321,15 @@ open class APNGImageView: UIView {
                     delegate?.apngImageView?(self, didFinishPlaybackForRepeatedCount: repeated)
                     
                     // If user set image to `nil`, do not render anymore.
-                    guard let _ = self.image else { return }
+                    guard let _ = self.image else { return false }
                     
                     currentFrameIndex = 0
                     repeated = repeated + 1
                     
                     if image.repeatCount != RepeatForever && repeated >= image.repeatCount {
                         stopAnimating()
-                        // Stop in the last frame
-                        return
+                        // Stop in the first frame
+                        return true
                     }
                     
                     // Only the first frame could be hidden.
@@ -299,7 +347,7 @@ open class APNGImageView: UIView {
                     delegate?.apngImageView?(self, didFinishPlaybackForRepeatedCount: repeated)
                     
                     // If user set image to `nil`, do not render anymore.
-                    guard let _ = self.image else { return }
+                    guard let _ = self.image else { return false }
                     
                     currentFrameIndex = 0
                     repeated = repeated + 1
@@ -307,7 +355,7 @@ open class APNGImageView: UIView {
                     if image.repeatCount != RepeatForever && repeated >= image.repeatCount {
                         stopAnimating()
                         // Stop in the last frame
-                        return
+                        return false
                     }
                     
                     // Only the first frame could be hidden.
@@ -333,7 +381,7 @@ open class APNGImageView: UIView {
                 updateContents(frame.image?.maskWithColor(color: maskColor!))
             }
         }
-        
+        return false
     }
     
     func updateContents(_ image: UIImage?) {
