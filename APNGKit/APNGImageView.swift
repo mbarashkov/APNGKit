@@ -207,7 +207,7 @@ open class APNGImageView: UIView {
         }
         
         if isAnimating {
-            return
+            pauseAnimating()
         }
         
         isAnimating = true
