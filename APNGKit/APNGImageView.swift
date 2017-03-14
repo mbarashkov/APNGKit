@@ -290,7 +290,6 @@ open class APNGImageView: UIView {
     }
     
     func tick(_ sender: CADisplayLink?, back: Bool = false) -> Bool {
-        print("tick")
         guard let localTimer = sender,
             let image = image else {
                 return false
