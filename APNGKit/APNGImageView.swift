@@ -198,17 +198,19 @@ open class APNGImageView: UIView {
      Starts animation contained in the image.
      */
     open func startAnimatingReverse(completed: @escaping  (Void) -> Void) {
+        print("startAnimatingReverse")
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
         
         if mainRunLoop != currentRunLoop {
-            performSelector(onMainThread: #selector(APNGImageView.startAnimating), with: nil, waitUntilDone: false)
+            performSelector(onMainThread: #selector(APNGImageView.startAnimatingReverse), with: nil, waitUntilDone: false)
             return
         }
         
         if isAnimating {
             pauseAnimating()
         }
+        print("startAnimatingReverse2")
         
         isAnimating = true
         timer = CADisplayLink.apng_displayLink({ [weak self] (displayLink) -> () in
@@ -247,26 +249,26 @@ open class APNGImageView: UIView {
     }
     
     open func pauseAnimating() {
+        print("pauseAnimating")
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
         
         if mainRunLoop != currentRunLoop {
-            performSelector(onMainThread: #selector(APNGImageView.stopAnimating), with: nil, waitUntilDone: false)
+            performSelector(onMainThread: #selector(APNGImageView.pauseAnimating), with: nil, waitUntilDone: true)
             return
         }
+        print("pauseAnimating2")
         
         if !isAnimating {
             return
         }
         
         isAnimating = false
-        /*repeated = 0
-         lastTimestamp = 0
-         currentPassedDuration = 0
-         currentFrameIndex = 0
-         */
+        
         timer?.invalidate()
         timer = nil
+        print("pauseAnimating3")
+        
     }
     
     open func resumeAnimating() {
