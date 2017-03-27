@@ -217,6 +217,7 @@ open class APNGImageView: UIView {
                 completed()
             }
         })
+        self.allowAnimationInScrollView = true
         timer?.add(to: mainRunLoop, forMode: (self.allowAnimationInScrollView ? RunLoopMode.commonModes : RunLoopMode.defaultRunLoopMode))
     }
     
@@ -262,7 +263,7 @@ open class APNGImageView: UIView {
         isAnimating = false
         
         timer?.invalidate()
-        timer = nil        
+        timer = nil
     }
     
     open func resumeAnimating() {
@@ -296,9 +297,11 @@ open class APNGImageView: UIView {
             if(back)
             {
                 currentFrameIndex = image.frameCount - 1
+            }
+            else
+            {
                 return false
             }
-            return false
         }
         
         let elapsedTime = localTimer.timestamp - lastTimestamp
@@ -307,7 +310,8 @@ open class APNGImageView: UIView {
         currentPassedDuration += elapsedTime
         
         if currentPassedDuration >= currentFrameDuration {
-            currentFrameIndex = currentFrameIndex + (back ? -1 : 1)
+            let easyBackwards = 1 + Int(currentFrameIndex * currentFrameIndex / (13 * 13))
+            currentFrameIndex = currentFrameIndex + (back ? -easyBackwards : 1)
             
             if(back)
             {
