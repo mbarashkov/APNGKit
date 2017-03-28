@@ -62,14 +62,14 @@ struct APNGMeta {
 }
 
 /**
-Disassembler Errors. An error will be thrown if the disassembler encounters
-unexpected error.
-
-- InvalidFormat:       The file is not a PNG format.
-- PNGStructureFailure: Fail on creating a PNG structure. It might due to out of memory.
-- PNGInternalError:    Internal error when decoding a PNG image.
-- FileSizeExceeded:    The file is too large. There is a limitation of APNGKit that the max width and height is 1M pixel.
-*/
+ Disassembler Errors. An error will be thrown if the disassembler encounters
+ unexpected error.
+ 
+ - InvalidFormat:       The file is not a PNG format.
+ - PNGStructureFailure: Fail on creating a PNG structure. It might due to out of memory.
+ - PNGInternalError:    Internal error when decoding a PNG image.
+ - FileSizeExceeded:    The file is too large. There is a limitation of APNGKit that the max width and height is 1M pixel.
+ */
 public enum DisassemblerError: Error {
     case invalidFormat
     case pngStructureFailure
@@ -79,11 +79,11 @@ public enum DisassemblerError: Error {
 }
 
 /**
-*  Disassemble APNG data. 
-*  See APNG Specification: https://wiki.mozilla.org/APNG_Specification for defination of APNG.
-*  This Disassembler is using a patched libpng with supporting of apng to read APNG data.
-*  See https://github.com/onevcat/libpng for more.
-*/
+ *  Disassemble APNG data.
+ *  See APNG Specification: https://wiki.mozilla.org/APNG_Specification for defination of APNG.
+ *  This Disassembler is using a patched libpng with supporting of apng to read APNG data.
+ *  See https://github.com/onevcat/libpng for more.
+ */
 class Disassembler {
     fileprivate(set) var reader: Reader
     let originalData: Data
@@ -95,18 +95,18 @@ class Disassembler {
     fileprivate(set) var apngMeta: APNGMeta?
     fileprivate let scale: CGFloat
     fileprivate var currentFrameIndex: Int = 0
-
+    
     fileprivate var bufferFrame: Frame!
     fileprivate var currentFrame: Frame!
     
     
     /**
-    Init a disassembler with APNG data.
-    
-    - parameter data: Data object of an APNG file.
-    
-    - returns: The disassembler ready to use.
-    */
+     Init a disassembler with APNG data.
+     
+     - parameter data: Data object of an APNG file.
+     
+     - returns: The disassembler ready to use.
+     */
     public init(data: Data, scale: CGFloat = 1) {
         reader = Reader(data: data)
         originalData = data
@@ -114,7 +114,7 @@ class Disassembler {
     }
     
     
-
+    
     func readRegularPNGFrame() -> Frame? {
         guard let apngMeta = apngMeta else { return nil }
         guard currentFrameIndex == 0 else { return nil }
@@ -139,7 +139,7 @@ class Disassembler {
         
         return currentFrame
     }
-
+    
     func readNextFrame() -> Frame? {
         
         guard let apngMeta = apngMeta else { return nil }
@@ -240,7 +240,7 @@ class Disassembler {
             throw DisassemblerError.pngStructureFailure
         }
         
-        if setjmp(png_jmpbuf(pngPointer)) != 0 {
+        if png_jmpbuf(pngPointer).pointee != 0 {
             throw DisassemblerError.pngInternalError
         }
         
@@ -277,12 +277,12 @@ class Disassembler {
         
         png_set_interlace_handling(pngPointer);
         png_read_update_info(pngPointer, infoPointer);
-
+        
         // Update information from updated info pointer
         let width = png_get_image_width(pngPointer, infoPointer)
         let height = png_get_image_height(pngPointer, infoPointer)
         let rowBytes = UInt32(png_get_rowbytes(pngPointer, infoPointer))
-
+        
         // Decode acTL
         var frameCount: UInt32 = 0, playCount: UInt32 = 0
         png_get_acTL(pngPointer, infoPointer, &frameCount, &playCount)
@@ -293,7 +293,7 @@ class Disassembler {
         } else {
             firstFrameHidden = png_get_first_frame_is_hidden(self.pngPointer, self.infoPointer) != 0
         }
-
+        
         // Setup apng meta
         let meta = APNGMeta(
             width: width,
@@ -320,7 +320,7 @@ class Disassembler {
         png_destroy_read_struct(&pngPointer, &infoPointer, nil)
         
         reader.endReading()
-
+        
         if bufferFrame != nil {
             bufferFrame.clean()
             bufferFrame = nil
@@ -332,17 +332,17 @@ class Disassembler {
     }
     
     /**
-    Decode the data to a high level `APNGImage` object.
-    
-    - parameter scale: The screen scale should be used when decoding. 
-    You should pass 1 if you want to use the dosassembler separately.
-    If you need to display the image on the screen later, use `UIScreen.mainScreen().scale`.
-    Default is 1.0.
-    
-    - throws: A `DisassemblerError` when error happens.
-    
-    - returns: A decoded `APNGImage` object at given scale.
-    */
+     Decode the data to a high level `APNGImage` object.
+     
+     - parameter scale: The screen scale should be used when decoding.
+     You should pass 1 if you want to use the dosassembler separately.
+     If you need to display the image on the screen later, use `UIScreen.mainScreen().scale`.
+     Default is 1.0.
+     
+     - throws: A `DisassemblerError` when error happens.
+     
+     - returns: A decoded `APNGImage` object at given scale.
+     */
     public func decode(_ scale: CGFloat = 1) throws -> APNGImage {
         let (frames, meta) = try decodeToElements(scale)
         
@@ -352,7 +352,7 @@ class Disassembler {
     }
     
     func decodeToElements(_ scale: CGFloat = 1) throws
-            -> (frames: [Frame], APNGMeta)
+        -> (frames: [Frame], APNGMeta)
     {
         var frames = [Frame]()
         while let frame = next() {
@@ -376,11 +376,11 @@ class Disassembler {
     
     func blendFrameDstBytes(_ dstBytes: Array<UnsafeMutablePointer<UInt8>>,
                             srcBytes: Array<UnsafeMutablePointer<UInt8>>,
-                             blendOP: UInt8,
-                             offsetX: UInt32,
-                             offsetY: UInt32,
-                               width: UInt32,
-                              height: UInt32)
+                            blendOP: UInt8,
+                            offsetX: UInt32,
+                            offsetY: UInt32,
+                            width: UInt32,
+                            height: UInt32)
     {
         var u: Int = 0, v: Int = 0, al: Int = 0
         
