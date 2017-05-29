@@ -120,6 +120,6 @@ extension Frame: CustomDebugStringConvertible {
     }
     
     var debugDescription: String {
-        return "\(description)\ndata: \(data)"
+        return "\(description)\ndata: \(data ?? Data())"
     }
 }

@@ -174,7 +174,7 @@ open class APNGImageView: UIView {
     /**
      Starts animation contained in the image.
      */
-    open func startAnimating() {
+    open func startAnimating(frameInterval: Int = 1) {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
         
@@ -188,8 +188,8 @@ open class APNGImageView: UIView {
         }
         
         isAnimating = true
-        timer = CADisplayLink.apng_displayLink({ [weak self] (displayLink) -> () in
-            self?.tick(displayLink)
+        timer = CADisplayLink.apng_displayLink(frameInterval: frameInterval, { [weak self] (displayLink) -> () in
+            _ = self?.tick(displayLink)
         })
         timer?.add(to: mainRunLoop, forMode: (self.allowAnimationInScrollView ? RunLoopMode.commonModes : RunLoopMode.defaultRunLoopMode))
     }
@@ -266,7 +266,7 @@ open class APNGImageView: UIView {
         timer = nil
     }
     
-    open func resumeAnimating() {
+    open func resumeAnimating(frameInterval: Int = 1) {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
         
@@ -280,8 +280,8 @@ open class APNGImageView: UIView {
         }
         
         isAnimating = true
-        timer = CADisplayLink.apng_displayLink({ [weak self] (displayLink) -> () in
-            self?.tick(displayLink)
+        timer = CADisplayLink.apng_displayLink(frameInterval: frameInterval, { [weak self] (displayLink) -> () in
+            _ = self?.tick(displayLink)
         })
         timer?.add(to: mainRunLoop, forMode: (self.allowAnimationInScrollView ? RunLoopMode.commonModes : RunLoopMode.defaultRunLoopMode))
     }
@@ -422,12 +422,13 @@ extension CADisplayLink {
         objc_setAssociatedObject(self, &apng_userInfoKey, userInfo, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
     }
     
-    static func apng_displayLink(_ block: (CADisplayLink) -> ()) -> CADisplayLink
+    static func apng_displayLink(frameInterval: Int = 1, _ block: (CADisplayLink) -> ()) -> CADisplayLink
     {
         let displayLink = CADisplayLink(target: self, selector: #selector(CADisplayLink.apng_blockInvoke(_:)))
-        
+        displayLink.frameInterval = frameInterval
         let block = Block(block)
         displayLink.apng_setUserInfo(block)
+        
         return displayLink
     }
     
