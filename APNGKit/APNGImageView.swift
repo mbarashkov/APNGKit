@@ -197,7 +197,7 @@ open class APNGImageView: UIView {
     /**
      Starts animation contained in the image.
      */
-    open func startAnimatingReverse(completed: @escaping  (Void) -> Void) {
+    open func startAnimatingReverse(frameInterval: Int = 1, completed: @escaping  (Void) -> Void = {}) {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
         
@@ -211,7 +211,7 @@ open class APNGImageView: UIView {
         }
         
         isAnimating = true
-        timer = CADisplayLink.apng_displayLink({ [weak self] (displayLink) -> () in
+        timer = CADisplayLink.apng_displayLink(frameInterval: frameInterval, { [weak self] (displayLink) -> () in
             if self?.tick(displayLink, back: true) ?? false
             {
                 completed()
