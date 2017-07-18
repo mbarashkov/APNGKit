@@ -24,7 +24,11 @@
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 //  THE SOFTWARE.
 
-import UIKit
+#if os(macOS)
+    import Cocoa
+#else
+    import UIKit
+#endif
 
 /// APNG animation should repeat forever.
 public let RepeatForever = -1
@@ -34,11 +38,11 @@ public let RepeatForever = -1
 /// `APNGImage` can hold an APNG image or a regular PNG image. If latter, there will be only one frame in the image.
 open class APNGImage: NSObject { // For ObjC compatibility
     
-    /// Total duration of the animation. If progressive loading is used, this property returns 0.0.
-    open var duration: TimeInterval {
+    /// Total duration of the animation. If progressive loading is used, this property returns `nil`.
+    open var duration: TimeInterval? {
         return frames?.reduce(0.0) {
             $0 + $1.duration
-        } ?? 0.0
+        } ?? nil
     }
     
     /// Size of the image in point. The scale factor is considered.
@@ -102,8 +106,6 @@ open class APNGImage: NSObject { // For ObjC compatibility
     // So we could share the bytes in it between two "same" APNG image objects.
     fileprivate let dataOwner: APNGImage?
     fileprivate let internalSize: CGSize // size in pixel
-    
-    static var searchBundle: Bundle = Bundle.main
 
     init(scale: CGFloat, meta: APNGMeta) {
         let size = CGSize(width: Int(meta.width), height: Int(meta.height))
@@ -120,12 +122,14 @@ open class APNGImage: NSObject { // For ObjC compatibility
         dataOwner = nil
     }
     
+    // Init from a frame array. This happens when all frame data get decoded.
     convenience init(frames: [Frame], scale: CGFloat, meta: APNGMeta) {
         self.init(scale: scale, meta: meta)
         self.frames = frames
         self.disassembler = nil
     }
     
+    // Init from a disaabler. This happens when loading progressivly.
     convenience init(disassembler: Disassembler, scale: CGFloat, meta: APNGMeta) {
         self.init(scale: scale, meta: meta)
         self.disassembler = disassembler
@@ -177,12 +181,13 @@ open class APNGImage: NSObject { // For ObjC compatibility
      - parameter progressive: When set to true, only the current frame will be loaded. This could free up memory
                               that are not current displayed, but will take more performance to load the needed frame
                               when it is about to be displayed. Otherwise, all frames will be loaded once. Default is `false`.
+     - parameter bundle:      The bundle in which APNGKit should search for the image name.
 
      - returns: The image object for the specified file, or nil if the method could not find the specified image.
     
     */
-    public convenience init?(named imageName: String, progressive: Bool = false) {
-        if let path = imageName.apng_filePathByCheckingNameExistingInBundle(APNGImage.searchBundle) {
+    public convenience init?(named imageName: String, progressive: Bool = false, in bundle: Bundle = .main) {
+        if let path = imageName.apng_filePathByCheckingNameExistingInBundle(bundle) {
             self.init(contentsOfFile:path, saveToCache: true, progressive: progressive)
         } else {
             return nil
@@ -328,7 +333,12 @@ extension String {
         // Else, user is passing a common name without known suffix.
         // We will try to find the version match current scale first, then the one with 1 less scale factor.
         var path: String?
-        let scales = 1 ... Int(UIScreen.main.scale)
+        
+        #if os(macOS)
+            let scales = 1 ... Int(NSScreen.main()?.backingScaleFactor ?? 1)
+        #else
+            let scales = 1 ... Int(UIScreen.main.scale)
+        #endif
         
         path = scales.reversed().reduce(nil) { (result, scale) -> String? in
             return result ??
