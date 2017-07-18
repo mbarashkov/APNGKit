@@ -191,7 +191,7 @@ open class APNGImageView: APNGView {
     /**
     Starts animation contained in the image.
     */
-    open func startAnimating(frameInterval: Int = 1, back: Bool = false, completed: @escaping  (Void) -> Void = {}) {
+    open func startAnimating(frameInterval: Double = 1.0, back: Bool = false, completed: @escaping  (Void) -> Void = {}) {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
         
@@ -217,7 +217,7 @@ open class APNGImageView: APNGView {
         timer!.start()
     }
     
-    open func startAnimatingReverse(frameInterval: Int = 1, completed: @escaping  (Void) -> Void = {}) {
+    open func startAnimatingReverse(frameInterval: Double = 1.0, completed: @escaping  (Void) -> Void = {}) {
         startAnimating(frameInterval: frameInterval, back: true, completed: completed)
     }
     
@@ -261,13 +261,13 @@ open class APNGImageView: APNGView {
         
         isAnimating = false
         
-        timer?.invalidate()
+        timer?.pause()
         timer = nil
     }
     
-    func tick(back: Bool = false) {
+    func tick(back: Bool = false) -> Bool {
         guard let image = image else {
-            return
+            return false
         }
         
         let timestamp = CACurrentMediaTime()
@@ -292,14 +292,14 @@ open class APNGImageView: APNGView {
             let easyBackwards = 1 + Int(currentFrameIndex * currentFrameIndex / (13 * 13))
             currentFrameIndex = currentFrameIndex + (back ? -easyBackwards : 1)
             
-            var ended = back? currentFrameIndex < 0 : currentFrameIndex == image.frameCount
+            let ended = back ? (currentFrameIndex < 0) : (currentFrameIndex == image.frameCount)
             
             if ended {
                 
                 delegate?.apngImageView?(self, didFinishPlaybackForRepeatedCount: repeated)
                 
                 // If user set image to `nil`, do not render anymore.
-                guard let _ = self.image else { return }
+                guard let _ = self.image else { return false}
                 
                 currentFrameIndex = 0
                 repeated = repeated + 1
@@ -307,7 +307,7 @@ open class APNGImageView: APNGView {
                 if image.repeatCount != RepeatForever && repeated >= image.repeatCount {
                     stopAnimating()
                     // Stop in the last frame
-                    return
+                    return back
                 }
                 
                 // Only the first frame could be hidden.
