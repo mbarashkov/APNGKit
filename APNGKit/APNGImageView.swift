@@ -38,11 +38,36 @@
     @objc optional func apngImageView(_ imageView: APNGImageView, didFinishPlaybackForRepeatedCount count: Int)
 }
 
+extension UIImage {
+    func maskWithColor(color: UIColor) -> UIImage? {
+        let maskImage = cgImage!
+        
+        let width = size.width
+        let height = size.height
+        let bounds = CGRect(x: 0, y: 0, width: width, height: height)
+        
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+        let context = CGContext(data: nil, width: Int(width), height: Int(height), bitsPerComponent: 8, bytesPerRow: 0, space: colorSpace, bitmapInfo: bitmapInfo.rawValue)!
+        
+        context.clip(to: bounds, mask: maskImage)
+        context.setFillColor(color.cgColor)
+        context.fill(bounds)
+        
+        if let cgImage = context.makeImage() {
+            return UIImage(cgImage: cgImage)
+        } else {
+            return nil
+        }
+    }
+}
+
 /// An APNG image view object provides a view-based container for displaying an APNG image.
 /// You can control the starting and stopping of the animation, as well as the repeat count.
 /// All images associated with an APNGImageView object should use the same scale. 
 /// If your application uses images with different scales, they may render incorrectly.
 open class APNGImageView: APNGView {
+    open var maskColor:UIColor?
     
     /// The image displayed in the image view.
     /// If you change the image when the animation playing, 
@@ -166,7 +191,7 @@ open class APNGImageView: APNGView {
     /**
     Starts animation contained in the image.
     */
-    open func startAnimating() {
+    open func startAnimating(frameInterval: Int = 1, back: Bool = false, completed: @escaping  (Void) -> Void = {}) {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
         
@@ -180,11 +205,20 @@ open class APNGImageView: APNGView {
         }
         
         isAnimating = true
-        timer = GCDTimer(intervalInSecs: 0.016)
+        timer = GCDTimer(intervalInSecs: 0.016 * frameInterval)
         timer!.Event = { [weak self] _ in
-            DispatchQueue.main.sync { self?.tick() }
+            DispatchQueue.main.sync { 
+                if self?.tick(back: back) == true
+                {
+                    completed()
+                }
+            }
         }
         timer!.start()
+    }
+    
+    open func startAnimatingReverse(frameInterval: Int = 1, completed: @escaping  (Void) -> Void = {}) {
+        startAnimating(frameInterval: frameInterval, back: true, completed: completed)
     }
     
     /**
@@ -212,7 +246,26 @@ open class APNGImageView: APNGView {
         timer = nil
     }
     
-    func tick() {
+    open func pauseAnimating() {
+        let mainRunLoop = RunLoop.main
+        let currentRunLoop = RunLoop.current
+        
+        if mainRunLoop != currentRunLoop {
+            performSelector(onMainThread: #selector(APNGImageView.pauseAnimating), with: nil, waitUntilDone: true)
+            return
+        }
+        
+        if !isAnimating {
+            return
+        }
+        
+        isAnimating = false
+        
+        timer?.invalidate()
+        timer = nil
+    }
+    
+    func tick(back: Bool = false) {
         guard let image = image else {
             return
         }
@@ -220,7 +273,14 @@ open class APNGImageView: APNGView {
         let timestamp = CACurrentMediaTime()
         if lastTimestamp == 0 {
             lastTimestamp = timestamp
-            return
+            if(back)
+            {
+                currentFrameIndex = image.frameCount - 1
+            }
+            else
+            {
+                return false
+            }
         }
         
         let elapsedTime = timestamp - lastTimestamp
@@ -229,9 +289,12 @@ open class APNGImageView: APNGView {
         currentPassedDuration += elapsedTime
         
         if currentPassedDuration >= currentFrameDuration {
-            currentFrameIndex = currentFrameIndex + 1
+            let easyBackwards = 1 + Int(currentFrameIndex * currentFrameIndex / (13 * 13))
+            currentFrameIndex = currentFrameIndex + (back ? -easyBackwards : 1)
             
-            if currentFrameIndex == image.frameCount {
+            var ended = back? currentFrameIndex < 0 : currentFrameIndex == image.frameCount
+            
+            if ended {
                 
                 delegate?.apngImageView?(self, didFinishPlaybackForRepeatedCount: repeated)
                 
@@ -259,9 +322,16 @@ open class APNGImageView: APNGView {
             
             let frame = image.next(currentIndex: currentFrameIndex)
             currentFrameDuration = frame.duration
-            updateContents(frame.image)
+            if(maskColor == nil)
+            {
+                updateContents(frame.image)
+            }
+            else
+            {
+                updateContents(frame.image?.maskWithColor(color: maskColor!))
+            }
         }
-        
+        return false
     }
     
     func updateContents(_ image: CocoaImage?) {
