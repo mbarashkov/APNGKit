@@ -33,7 +33,7 @@
     public typealias APNGView = UIView
     typealias CocoaImage = UIImage
 #endif
-    
+
 @objc public protocol APNGImageViewDelegate {
     @objc optional func apngImageView(_ imageView: APNGImageView, didFinishPlaybackForRepeatedCount count: Int)
 }
@@ -83,7 +83,7 @@ open class APNGImageView: APNGView {
             }
             
             image.reset()
-
+            
             let frame = image.next(currentIndex: currentFrameIndex)
             currentFrameDuration = frame.duration
             updateContents(frame.image)
@@ -129,17 +129,17 @@ open class APNGImageView: APNGView {
     var repeated: Int = 0
     
     /**
-    Initialize an APNG image view with the specified image.
-    
-    - note: This method adjusts the frame of the receiver to match the 
-            size of the specified image. It also disables user interactions 
-            for the image view by default.
-            The first frame of image (default image) will be displayed.
-    
-    - parameter image: The initial APNG image to display in the image view.
-    
-    - returns: An initialized image view object.
-    */
+     Initialize an APNG image view with the specified image.
+     
+     - note: This method adjusts the frame of the receiver to match the 
+     size of the specified image. It also disables user interactions 
+     for the image view by default.
+     The first frame of image (default image) will be displayed.
+     
+     - parameter image: The initial APNG image to display in the image view.
+     
+     - returns: An initialized image view object.
+     */
     public init(image: APNGImage?) {
         self.image = image
         isAnimating = false
@@ -172,16 +172,16 @@ open class APNGImageView: APNGView {
             wantsLayer = false
         #endif
     }
-
+    
     /**
-    Initialize an APNG image view with a decoder.
-    
-    - note: You should never call this init method from your code.
-    
-    - parameter aDecoder: A decoder used to decode the view from nib.
-    
-    - returns: An initialized image view object.
-    */
+     Initialize an APNG image view with a decoder.
+     
+     - note: You should never call this init method from your code.
+     
+     - parameter aDecoder: A decoder used to decode the view from nib.
+     
+     - returns: An initialized image view object.
+     */
     required public init?(coder aDecoder: NSCoder) {
         isAnimating = false
         autoStartAnimation = false
@@ -189,8 +189,8 @@ open class APNGImageView: APNGView {
     }
     
     /**
-    Starts animation contained in the image.
-    */
+     Starts animation contained in the image.
+     */
     open func startAnimating(frameInterval: Double = 1.0, back: Bool = false, completed: @escaping  (Void) -> Void = {}) {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
@@ -205,9 +205,11 @@ open class APNGImageView: APNGView {
         }
         
         isAnimating = true
+        
         timer = GCDTimer(intervalInSecs: 0.016 * frameInterval)
+        
         timer!.Event = { [weak self] _ in
-            DispatchQueue.main.sync { 
+            DispatchQueue.main.async { 
                 if self?.tick(back: back) == true
                 {
                     completed()
@@ -218,12 +220,16 @@ open class APNGImageView: APNGView {
     }
     
     open func startAnimatingReverse(frameInterval: Double = 1.0, completed: @escaping  (Void) -> Void = {}) {
+        if isAnimating
+        {
+            pauseAnimating()
+        }
         startAnimating(frameInterval: frameInterval, back: true, completed: completed)
     }
     
     /**
-    Starts animation contained in the image.
-    */
+     Starts animation contained in the image.
+     */
     open func stopAnimating() {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
@@ -261,7 +267,8 @@ open class APNGImageView: APNGView {
         
         isAnimating = false
         
-        timer?.pause()
+        //timer?.pause()
+        timer?.timerSource.cancel()
         timer = nil
     }
     
