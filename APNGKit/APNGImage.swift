@@ -188,7 +188,7 @@ open class APNGImage: NSObject { // For ObjC compatibility
     */
     public convenience init?(named imageName: String, progressive: Bool = false, in bundle: Bundle = .main) {
         if let path = imageName.apng_filePathByCheckingNameExistingInBundle(bundle) {
-            self.init(contentsOfFile:path, saveToCache: true, progressive: progressive)
+            self.init(contentsOfFile:path, saveToCache: false, progressive: progressive)
         } else {
             return nil
         }
