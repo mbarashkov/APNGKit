@@ -101,6 +101,9 @@ open class APNGImageView: APNGView {
     /// A Bool value indicating whether the animation is running.
     open fileprivate(set) var isAnimating: Bool
     
+    /// A Bool value indicating whether the animation is running.
+    open fileprivate(set) var isCompleted: Bool
+    
     /// A Bool value indicating whether the animation should be 
     /// started automatically after an image is set. Default is false.
     open var autoStartAnimation: Bool {
@@ -143,6 +146,7 @@ open class APNGImageView: APNGView {
     public init(image: APNGImage?) {
         self.image = image
         isAnimating = false
+        isCompleted = false
         autoStartAnimation = false
         
         if let image = image {
@@ -184,6 +188,7 @@ open class APNGImageView: APNGView {
      */
     required public init?(coder aDecoder: NSCoder) {
         isAnimating = false
+        isCompleted = false
         autoStartAnimation = false
         super.init(coder: aDecoder)
     }
@@ -194,6 +199,7 @@ open class APNGImageView: APNGView {
     open func startAnimating(frameInterval: Double = 1.0, back: Bool = false, completed: @escaping  (Void) -> Void = {}) {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
+        isCompleted = false
         
         if mainRunLoop != currentRunLoop {
             performSelector(onMainThread: #selector(APNGImageView.startAnimating), with: nil, waitUntilDone: false)
@@ -206,7 +212,7 @@ open class APNGImageView: APNGView {
         
         isAnimating = true
         
-        timer = GCDTimer(intervalInSecs: 0.016 * frameInterval)
+        timer = GCDTimer(intervalInSecs: frameInterval / 60.0)
         
         timer!.Event = { [weak self] _ in
             DispatchQueue.main.async { 
@@ -314,6 +320,7 @@ open class APNGImageView: APNGView {
                 if image.repeatCount != RepeatForever && repeated >= image.repeatCount {
                     stopAnimating()
                     // Stop in the last frame
+                    isCompleted = true
                     return back
                 }
                 
