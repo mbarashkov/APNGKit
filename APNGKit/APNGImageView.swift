@@ -245,9 +245,9 @@ open class APNGImageView: APNGView {
             return
         }
         
-        if !isAnimating {
+        /*if !isAnimating {
             return
-        }
+        }*/
         
         isAnimating = false
         repeated = 0
