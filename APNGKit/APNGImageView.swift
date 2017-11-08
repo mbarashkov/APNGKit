@@ -196,7 +196,7 @@ open class APNGImageView: APNGView {
     /**
      Starts animation contained in the image.
      */
-    open func startAnimating(frameInterval: Double = 1.0, back: Bool = false, completed: @escaping  (Void) -> Void = {}) {
+    @objc open func startAnimating(frameInterval: Double = 1.0, back: Bool = false, completed: @escaping  () -> Void = {}) {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
         isCompleted = false
@@ -214,7 +214,7 @@ open class APNGImageView: APNGView {
         
         timer = GCDTimer(intervalInSecs: frameInterval / 60.0)
         
-        timer!.Event = { [weak self] _ in
+        timer!.Event = { [weak self] in
             DispatchQueue.main.async { 
                 if self?.tick(back: back) == true
                 {
@@ -225,7 +225,7 @@ open class APNGImageView: APNGView {
         timer!.start()
     }
     
-    open func startAnimatingReverse(frameInterval: Double = 1.0, completed: @escaping  (Void) -> Void = {}) {
+    open func startAnimatingReverse(frameInterval: Double = 1.0, completed: @escaping  () -> Void = {}) {
         if isAnimating
         {
             pauseAnimating()
@@ -236,7 +236,7 @@ open class APNGImageView: APNGView {
     /**
      Starts animation contained in the image.
      */
-    open func stopAnimating() {
+    @objc open func stopAnimating() {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
         
@@ -258,7 +258,7 @@ open class APNGImageView: APNGView {
         timer = nil
     }
     
-    open func pauseAnimating() {
+    @objc open func pauseAnimating() {
         let mainRunLoop = RunLoop.main
         let currentRunLoop = RunLoop.current
         
