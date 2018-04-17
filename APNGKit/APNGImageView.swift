@@ -331,7 +331,7 @@ open class APNGImageView: APNGView {
                     stopAnimating()
                     // Stop in the last frame
                     isCompleted = true
-                    return back
+                    return true
                 }
                 
                 // Only the first frame could be hidden.
